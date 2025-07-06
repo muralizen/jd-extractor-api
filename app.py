@@ -1,35 +1,33 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
-from bs4 import BeautifulSoup
+from flask import Flask, request, jsonify
+import re
+import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-class HTMLRequest(BaseModel):
-    html: str
+@app.route('/extract-jd', methods=['POST'])
+def extract_jd():
+    try:
+        data = request.get_json()
+        text = data.get("emailText", "")
 
-@app.post("/convert")
-async def convert_html(request: HTMLRequest):
-    soup = BeautifulSoup(request.html, "html.parser")
-    text = soup.get_text(separator="\n").strip()
-    
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+        # Flexible pattern to match "Label : value" or "Label value"
+        def extract(label):
+            pattern = rf"{label}\s*:?\s*(.+)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            return match.group(1).strip() if match else ""
 
-    data = {
-        "jobTitle": lines[0] if len(lines) > 0 else "",
-        "experience": "",
-        "location": "",
-        "skills": "",
-        "duration": ""
-    }
+        result = {
+            "JobTitle": extract("Job Title"),
+            "Experience": extract("Experience"),
+            "Location": extract("Location"),
+            "Skills": extract("Skills")
+        }
 
-    for line in lines:
-        if line.lower().startswith("experience"):
-            data["experience"] = line.replace("Experience:", "").strip()
-        elif line.lower().startswith("location"):
-            data["location"] = line.replace("Location:", "").strip()
-        elif line.lower().startswith("skills"):
-            data["skills"] = line.replace("Skills:", "").strip()
-        elif line.lower().startswith("duration"):
-            data["duration"] = line.replace("Duration:", "").strip()
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return data
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # Render sets this dynamically
+    app.run(host="0.0.0.0", port=port)
