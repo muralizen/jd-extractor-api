@@ -19,10 +19,9 @@ def extract_jd():
         result = {
             "JobTitle": extract("Job Title"),
             "Experience": extract("Experience"),
-            "Skills": extract("Skills"),
             "Location": extract("Location"),
+            "Skills": extract("Skills"),
             "Duration": extract("Duration"),
-            "Client": extract("Client")
         }
 
         return jsonify(result), 200
